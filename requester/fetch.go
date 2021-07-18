@@ -2,6 +2,7 @@ package requester
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/tickstep/library-go/requester/rio"
 	"io"
@@ -52,33 +53,68 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 	)
 
 	if post != nil {
-		switch value := post.(type) {
-		case io.Reader:
-			obody = value
-		case map[string]string:
-			query := url.Values{}
-			for k := range value {
-				query.Set(k, value[k])
+		isJson := false
+		if header != nil {
+			if ct, ok := header["Content-Type"]; ok {
+				if strings.ContainsAny(strings.ToLower(ct), "application/json") {
+					isJson = true
+				}
 			}
-			obody = strings.NewReader(query.Encode())
-		case map[string]interface{}:
-			query := url.Values{}
-			for k := range value {
-				query.Set(k, fmt.Sprint(value[k]))
+			if ct, ok := header["content-type"]; ok {
+				if strings.ContainsAny(strings.ToLower(ct), "application/json") {
+					isJson = true
+				}
 			}
-			obody = strings.NewReader(query.Encode())
-		case map[interface{}]interface{}:
-			query := url.Values{}
-			for k := range value {
-				query.Set(fmt.Sprint(k), fmt.Sprint(value[k]))
+		}
+		if isJson {
+			switch value := post.(type) {
+			case io.Reader:
+				obody = value
+			case map[string]string:
+				paramJson, _ := json.Marshal(value)
+				obody = strings.NewReader(string(paramJson))
+			case map[string]interface{}:
+				paramJson, _ := json.Marshal(value)
+				obody = strings.NewReader(string(paramJson))
+			case map[interface{}]interface{}:
+				paramJson, _ := json.Marshal(value)
+				obody = strings.NewReader(string(paramJson))
+			case string:
+				obody = strings.NewReader(value)
+			case []byte:
+				obody = bytes.NewReader(value[:])
+			default:
+				return nil, fmt.Errorf("requester.Req: unknown post type: %s", value)
 			}
-			obody = strings.NewReader(query.Encode())
-		case string:
-			obody = strings.NewReader(value)
-		case []byte:
-			obody = bytes.NewReader(value[:])
-		default:
-			return nil, fmt.Errorf("requester.Req: unknown post type: %s", value)
+		} else {
+			switch value := post.(type) {
+			case io.Reader:
+				obody = value
+			case map[string]string:
+				query := url.Values{}
+				for k := range value {
+					query.Set(k, value[k])
+				}
+				obody = strings.NewReader(query.Encode())
+			case map[string]interface{}:
+				query := url.Values{}
+				for k := range value {
+					query.Set(k, fmt.Sprint(value[k]))
+				}
+				obody = strings.NewReader(query.Encode())
+			case map[interface{}]interface{}:
+				query := url.Values{}
+				for k := range value {
+					query.Set(fmt.Sprint(k), fmt.Sprint(value[k]))
+				}
+				obody = strings.NewReader(query.Encode())
+			case string:
+				obody = strings.NewReader(value)
+			case []byte:
+				obody = bytes.NewReader(value[:])
+			default:
+				return nil, fmt.Errorf("requester.Req: unknown post type: %s", value)
+			}
 		}
 
 		switch value := post.(type) {
