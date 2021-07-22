@@ -84,7 +84,8 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 			case []byte:
 				obody = bytes.NewReader(value[:])
 			default:
-				return nil, fmt.Errorf("requester.Req: unknown post type: %s", value)
+				paramJson, _ := json.Marshal(value)
+				obody = strings.NewReader(string(paramJson))
 			}
 		} else {
 			switch value := post.(type) {
