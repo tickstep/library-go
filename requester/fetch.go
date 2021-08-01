@@ -56,12 +56,12 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 		isJson := false
 		if header != nil {
 			if ct, ok := header["Content-Type"]; ok {
-				if strings.ContainsAny(strings.ToLower(ct), "application/json") {
+				if strings.Contains(strings.ToLower(ct), "application/json") {
 					isJson = true
 				}
 			}
 			if ct, ok := header["content-type"]; ok {
-				if strings.ContainsAny(strings.ToLower(ct), "application/json") {
+				if strings.Contains(strings.ToLower(ct), "application/json") {
 					isJson = true
 				}
 			}
