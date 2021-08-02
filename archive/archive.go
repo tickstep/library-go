@@ -49,8 +49,6 @@ func gzipCompressFile(op, filePath string) (err error) {
 		return
 	}
 
-	defer f.Close()
-
 	fInfo, err := f.Stat()
 	if err != nil {
 		return
@@ -63,8 +61,6 @@ func gzipCompressFile(op, filePath string) (err error) {
 		return
 	}
 
-	defer tempFile.Close()
-
 	switch op {
 	case "en":
 		err = GZIPCompress(f, tempFile)
@@ -73,6 +69,8 @@ func gzipCompressFile(op, filePath string) (err error) {
 	default:
 		panic("unknown op" + op)
 	}
+	tempFile.Close()
+	f.Close()
 
 	if err != nil {
 		os.Remove(tempFilePath)
