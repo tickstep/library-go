@@ -11,12 +11,22 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
+
+type IPType string
 
 const (
 	// MaxDuration 最大的Duration
 	MaxDuration = 1<<63 - 1
+
+	// IPAny 任意IP，默认取第一个域名解析的结果
+	IPAny IPType = "any"
+	// IPv4 优先使用Ipv4的域名解析地址
+	IPv4 IPType = "ipv4"
+	// IPv6 优先使用Ipv6的域名解析地址
+	IPv6 IPType = "ipv6"
 )
 
 var (
@@ -29,6 +39,9 @@ var (
 	ErrProxyAddrEmpty = errors.New("proxy addr is empty")
 
 	tcpCache = cachemap.GlobalCacheOpMap.LazyInitCachePoolOp("requester/tcp")
+
+	// ipPref 域名解析策略
+	ipPref = IPAny
 )
 
 // SetLocalTCPAddrList 设置网卡地址
@@ -45,6 +58,11 @@ func SetLocalTCPAddrList(ips ...string) {
 		})
 	}
 	localTCPAddrList = list
+}
+
+// SetPreferIPType 设置优先的IP类型
+func SetPreferIPType(ipType IPType) {
+	ipPref = ipType
 }
 
 func proxyFunc(req *http.Request) (*url.URL, error) {
@@ -121,7 +139,29 @@ func resolveTCPHost(ctx context.Context, host string) (ip net.IP, err error) {
 		return
 	}
 
+	// 执行域名解析策略
+	for _, ipaddr := range addrs {
+		if ipPref == IPv4 { // 优先IPv4
+			if isIPv4(ipaddr.IP.String()) {
+				return ipaddr.IP, nil
+			}
+		} else if ipPref == IPv6 { // 优先IPv6
+			if isIPv6(ipaddr.IP.String()) {
+				return ipaddr.IP, nil
+			}
+		}
+	}
+
+	// 默认使用第一个解析结果
 	return addrs[0].IP, nil
+}
+
+func isIPv4(ip string) bool {
+	return strings.Contains(ip, ".")
+}
+
+func isIPv6(ip string) bool {
+	return strings.Contains(ip, ":")
 }
 
 func dialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
