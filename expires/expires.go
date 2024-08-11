@@ -3,7 +3,6 @@ package expires
 import (
 	"fmt"
 	"time"
-	_ "unsafe" // for go:linkname
 )
 
 type (
